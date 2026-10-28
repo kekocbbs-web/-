@@ -1,0 +1,999 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WorkLog Pro - 員工每日工作日誌填寫</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    details > summary::-webkit-details-marker { display: none; }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-800 antialiased min-h-screen">
+  <div class="flex flex-col min-h-screen">
+    
+    <!-- 頂部導覽列 -->
+    <header class="bg-white border-b border-slate-200 sticky top-0 z-30">
+      <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="flex justify-between h-16 items-center">
+          <div class="flex items-center space-x-3">
+            <div class="bg-blue-600 text-white p-2 rounded-lg flex items-center justify-center font-bold">
+              <i class="fa-solid fa-clipboard-check text-xl"></i>
+            </div>
+            <div>
+              <span class="text-xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">WorkLog Pro</span>
+              <span class="text-xs text-slate-400 block -mt-1">員工專案規劃與任務管理系統</span>
+            </div>
+          </div>
+
+          <div class="flex items-center space-x-2">
+            <span class="text-xs font-semibold text-slate-600">填寫同仁：</span>
+            <input 
+              type="text" 
+              id="employeeName" 
+              placeholder="請輸入姓名"
+              class="border border-slate-300 rounded-lg px-3 py-1.5 text-xs bg-white w-32 font-bold text-blue-700 focus:ring-2 focus:ring-blue-500 focus:outline-none">
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <!-- 主要內容區塊 -->
+    <main class="flex-1 max-w-5xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+      
+      <!-- 未完成項目警示區 -->
+      <div id="alertBox" class="hidden bg-rose-50 border border-rose-200 p-4 rounded-xl shadow-sm flex items-start space-x-3">
+        <div class="text-rose-500 text-xl mt-0.5"><i class="fa-solid fa-triangle-exclamation"></i></div>
+        <div>
+          <h3 class="text-sm font-bold text-rose-800">系統已為您自動載入 <span id="alertCount" class="text-lg mx-1 font-black">0</span> 件未完成任務（已同步您最後一次的細項狀態與補充說明）！</h3>
+          <p class="text-xs text-rose-600 mt-1">記憶載入的任務已鎖定專案與分類名稱，請直接更新細項進度，全數完成後將自動結案。</p>
+        </div>
+      </div>
+
+      <!-- 填寫表單卡片 -->
+      <div class="bg-white shadow-sm rounded-xl border border-slate-200 overflow-hidden">
+        <div class="p-6 space-y-6">
+          
+          <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between pb-4 border-b border-slate-100 gap-3">
+            <div>
+              <h2 class="text-lg font-bold text-slate-800">✍️ 撰寫今日工作日誌</h2>
+              <p class="text-xs text-slate-500 mt-0.5">第 1 項與第 4 項需處理完相關細項才會判定結案。</p>
+            </div>
+            <div>
+              <input type="date" id="logDate" class="border border-slate-300 rounded-lg px-3 py-1.5 text-sm bg-white shadow-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
+            </div>
+          </div>
+
+          <!-- 任務明細列表 -->
+          <div class="space-y-4">
+            <div class="flex justify-between items-center border-b pb-2 border-slate-200">
+              <h3 class="text-sm font-bold text-slate-800 uppercase tracking-wider flex items-center space-x-2">
+                <i class="fa-solid fa-tasks text-blue-500"></i>
+                <span>今日任務項目清單</span>
+              </h3>
+              <button onclick="addTaskRow()" type="button" class="text-xs bg-blue-50 text-blue-600 hover:bg-blue-100 font-semibold px-3 py-1.5 rounded-lg transition-colors flex items-center space-x-1">
+                <i class="fa-solid fa-plus"></i>
+                <span>新增任務項目</span>
+              </button>
+            </div>
+
+            <div id="taskContainer" class="space-y-4"></div>
+          </div>
+
+          <!-- 卡關與明日目標 -->
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-sm font-semibold text-slate-700 mb-1">遭遇卡關與需協調事項</label>
+              <input type="text" id="blockersInput" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm bg-white" value="無">
+            </div>
+            <div>
+              <label class="block text-sm font-semibold text-slate-700 mb-1">明日預計目標</label>
+              <input type="text" id="tomorrowInput" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm bg-white" placeholder="明日重點推進工作...">
+            </div>
+          </div>
+
+        </div>
+
+        <!-- 底部提交區 -->
+        <div class="bg-slate-50 px-6 py-4 border-t border-slate-200 flex items-center justify-end">
+          <button onclick="submitLog()" id="submitBtn" type="button" class="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium text-sm rounded-lg shadow-sm transition-all flex items-center space-x-2">
+            <i class="fa-solid fa-paper-plane"></i>
+            <span>提交日誌至雲端</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- 📜 歷史紀錄與篩選專區 -->
+      <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-6 space-y-4">
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between border-b pb-3 gap-3">
+          <h3 class="text-base font-bold text-slate-800 flex items-center space-x-2">
+            <i class="fa-solid fa-book-open text-blue-500"></i>
+            <span id="historyTitle">📜 歷史工作日誌總覽</span>
+          </h3>
+          
+          <div class="flex items-center space-x-2 text-xs">
+            <span class="text-slate-500 font-medium">篩選：</span>
+            <select id="filterYear" onchange="renderHistory()" class="border border-slate-300 rounded-lg px-2 py-1.5 bg-white font-semibold">
+              <option value="">所有年份</option>
+            </select>
+            <select id="filterMonth" onchange="renderHistory()" class="border border-slate-300 rounded-lg px-2 py-1.5 bg-white font-semibold">
+              <option value="">所有月份</option>
+              <option value="01">1月</option><option value="02">2月</option><option value="03">3月</option>
+              <option value="04">4月</option><option value="05">5月</option><option value="06">6月</option>
+              <option value="07">7月</option><option value="08">8月</option><option value="09">9月</option>
+              <option value="10">10月</option><option value="11">11月</option><option value="12">12月</option>
+            </select>
+          </div>
+        </div>
+
+        <div id="historyContainer" class="space-y-4">
+          <div class="text-center py-8 text-xs text-slate-400">正在載入紀錄...</div>
+        </div>
+      </div>
+
+    </main>
+  </div>
+
+  <script>
+    const GAS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbzC0B2BWamYDgn4KY-8Q309CCw-2rz7vZQGeDXkN63UAVVQghqcmZm-eiETFe4CiB45/exec";
+
+    document.addEventListener("DOMContentLoaded", function() {
+      document.getElementById("logDate").valueAsDate = new Date();
+      
+      const savedName = localStorage.getItem("worklog_employee_name") || "";
+      const nameInput = document.getElementById("employeeName");
+      if (savedName) {
+        nameInput.value = savedName;
+        fetchLogs();
+      }
+
+      nameInput.addEventListener("input", function() {
+        const val = nameInput.value.trim();
+        localStorage.setItem("worklog_employee_name", val);
+        if (val) {
+          fetchLogs();
+        }
+      });
+
+      if (document.getElementById("taskContainer").children.length === 0) {
+        addTaskRow();
+      }
+    });
+
+    const subItemDefinitions = [
+      { key: 'woodwork', label: '木作工程', type: 'select' },
+      { key: 'wood_draw', label: '木工拆圖和CNC製圖', type: 'select' },
+      { key: 'iron', label: '鐵件製圖,發包', type: 'select' },
+      { key: 'glass', label: '玻璃製圖,發包', type: 'select' },
+      { key: 'acrylic', label: '壓克力製圖,發包', type: 'select' },
+      { key: 'lamp', label: '燈具採購', type: 'select' },
+      { key: 'wallpaper', label: '壁紙,布料採購', type: 'select' },
+      { key: 'paint', label: '油漆特殊材料採購', type: 'select' },
+      { key: 'hardware', label: '五金採購', type: 'select' },
+      { key: 'wood_mat', label: '木工材料採購', type: 'select' },
+      { key: 'import_mat', label: '進口材料採購', type: 'select' },
+      { key: 'demolish', label: '拆除安排(時間)', type: 'hybrid' },
+      { key: 'transport', label: '運輸叫車(時間)', type: 'hybrid' },
+      { key: 'dispatch', label: '粗工派工(時間)', type: 'hybrid' },
+      { key: 'clean', label: '清潔預約(時間)', type: 'hybrid' },
+      { key: 'assembly', label: '現場組裝,驗收(時間)', type: 'hybrid' },
+      { key: 'repair_est', label: '維修工程估價製單', type: 'select' }
+    ];
+
+    const projectCategories = [
+      { name: '假設工程', items: ['現場舊櫃拆除(天地壁)', '隔間放樣&圍籬輸出', '天花板放樣', '壁面封板查驗', '天花封板查驗', '地坪保護'] },
+      { name: '外觀工程', items: ['外觀垂板備料/LOGO訂製/招牌消光噴漆', '外觀夾板安裝定位', '外觀鐵板現場安裝', '大門玻璃/門把', 'LOGO安裝定位'] },
+      { name: '機電工程', items: ['天花配管配線', '壁面配管配線', '地坪配管配線', '網路電話拉線', '開關箱整理安裝', '配合道具安裝接線', '燈具配接安裝', '開關配接安裝', '插座配接安裝', '供電測試'] },
+      { name: '弱電設備工程', items: ['音響設備配線', '監控設備配線', '保全設備配線', '機櫃安裝定位', '相關設備安裝定位'] },
+      { name: '空調工程', items: ['風管配接延伸', '集風箱軟管配接安裝', '風量&溫度測量測試'] },
+      { name: '消防工程', items: ['消防弱電設備配管配線', '排煙風管訂製&安裝定位', '灑水配管', '試水', '消防設備&灑水蓋板安裝定位', '設備測試'] },
+      { name: '天花工程', items: ['暗架天花下骨料', '灑水頭定位板安裝定位', '燈具定位板安裝定位', '維修孔安裝定位', '暗架TH:12mm石膏板封板', '音響&消防設備開孔', '油漆AB膠填縫', '油漆接縫第一次批土', '油漆接縫第二次批土', '油漆透批', '油漆打磨', '油漆噴底漆', '油漆噴面漆'] },
+      { name: '地坪工程', items: ['地界條安裝定位', '地坪打底', '地坪靜置乾燥', 'PVC地板定位安裝', '木地板定位安裝', '地毯安裝'] },
+      { name: '隔間工程', items: ['隔間骨料安裝定位', 'TH:12mm石膏板單面封板', 'TH:12mm石膏板雙面封板', '門框安裝定位', '鏡框安裝', '玻璃鏡子丈量訂製', '鏡子安裝', '壁紙安裝', '木皮安裝'] },
+      { name: '道具工程', items: ['道具安裝', '軟裝&活動道具安裝定位'] },
+      { name: '進口材料訂購&加工訂製', items: ['木皮壁櫃訂製&加工', '木地板訂製', '進口傢俱/地毯訂購', '進口壁紙'] },
+      { name: '其他工程', items: ['垃圾粗清', '細部清潔', '業主點交', '商品陳列&收尾', '圍籬&輸出拆除', '開幕'] }
+    ];
+
+    let allLogs = [];
+
+    function addTaskRow(data) {
+      data = data || {};
+      const container = document.getElementById("taskContainer");
+      const rowId = 'task_' + Date.now() + Math.random().toString(36).substring(2, 5);
+      
+      const div = document.createElement("div");
+      div.className = "task-row bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-4 shadow-sm relative";
+      div.id = rowId;
+
+      const cat = data.category || '1-專案負責規劃,維修工程';
+      const defaultStatus = data.status || '進行中(未完成)';
+      const needsSubItems = (cat === '1-專案負責規劃,維修工程' || cat === '4-現場工程監工');
+      const isLocked = data.isAutoLoaded ? true : false;
+
+      const topGrid = document.createElement("div");
+      topGrid.className = "grid grid-cols-1 md:grid-cols-12 gap-3";
+      
+      const colProj = document.createElement("div");
+      colProj.className = "md:col-span-3";
+      
+      const labelProj = document.createElement("label");
+      labelProj.className = "block text-xs font-medium text-slate-500 mb-1 flex justify-between";
+      labelProj.innerHTML = '<span>專案名稱 <span class="text-rose-500">*</span></span>' + (isLocked ? '<span class="text-[10px] text-indigo-500"><i class="fa-solid fa-lock"></i> 記憶鎖定</span>' : '');
+      colProj.appendChild(labelProj);
+
+      const inputProj = document.createElement("input");
+      inputProj.type = "text";
+      inputProj.className = "task-project w-full border rounded-lg px-3 py-2 text-sm " + (isLocked ? "bg-slate-200 text-slate-500 cursor-not-allowed border-slate-200" : "bg-white font-bold border-slate-300");
+      inputProj.placeholder = "必填...";
+      inputProj.value = data.project || '';
+      if (isLocked) inputProj.disabled = true;
+      colProj.appendChild(inputProj);
+      topGrid.appendChild(colProj);
+
+      const colCat = document.createElement("div");
+      colCat.className = "md:col-span-4";
+      
+      const labelCat = document.createElement("label");
+      labelCat.className = "block text-xs font-medium text-slate-500 mb-1";
+      labelCat.innerText = "任務名稱 (主項)";
+      colCat.appendChild(labelCat);
+
+      const catSelect = document.createElement("select");
+      catSelect.className = "task-category w-full border rounded-lg px-3 py-2 text-sm " + (isLocked ? "bg-slate-200 text-slate-500 cursor-not-allowed border-slate-200" : "bg-white text-blue-700 font-bold border-slate-300");
+      if (isLocked) catSelect.disabled = true;
+      
+      const categoriesList = ['1-專案負責規劃,維修工程', '2-專案設計規劃,製圖', '3-專案工程估價', '4-現場工程監工'];
+      for (let i = 0; i < categoriesList.length; i++) {
+        const optVal = categoriesList[i];
+        const opt = document.createElement("option");
+        opt.value = optVal;
+        opt.innerText = optVal;
+        if (optVal === cat) opt.selected = true;
+        catSelect.appendChild(opt);
+      }
+      catSelect.onchange = function() { changeTaskCategory(rowId); };
+      colCat.appendChild(catSelect);
+      topGrid.appendChild(colCat);
+
+      const colStatus = document.createElement("div");
+      colStatus.className = "md:col-span-2";
+      
+      const labelStatus = document.createElement("label");
+      labelStatus.className = "block text-xs font-medium text-slate-500 mb-1";
+      labelStatus.innerText = "整體狀態";
+      colStatus.appendChild(labelStatus);
+
+      const statusSelect = document.createElement("select");
+      statusSelect.className = "task-status w-full border border-slate-300 rounded-lg px-2 py-2 text-sm font-semibold bg-white";
+      
+      const opt1 = document.createElement("option");
+      opt1.value = "進行中(未完成)";
+      opt1.innerText = "⏳ 進行中(未完成)";
+      if (defaultStatus === '進行中(未完成)') opt1.selected = true;
+      statusSelect.appendChild(opt1);
+
+      const opt2 = document.createElement("option");
+      opt2.value = "已完成";
+      opt2.innerText = "✅ 已完成";
+      if (defaultStatus === '已完成') opt2.selected = true;
+      statusSelect.appendChild(opt2);
+
+      colStatus.appendChild(statusSelect);
+      topGrid.appendChild(colStatus);
+
+      const colDeadline = document.createElement("div");
+      colDeadline.className = "md:col-span-3 relative";
+      
+      const labelDeadline = document.createElement("label");
+      labelDeadline.className = "block text-xs font-medium text-slate-500 mb-1 flex justify-between";
+      labelDeadline.innerHTML = '<span>完成期限 <span class="text-rose-500">*</span></span><span class="countdown-text text-rose-500 font-bold tracking-wide"></span>';
+      colDeadline.appendChild(labelDeadline);
+
+      const inputDeadline = document.createElement("input");
+      inputDeadline.type = "date";
+      inputDeadline.className = "task-deadline w-full border border-slate-300 rounded-lg px-3 py-2 text-sm bg-white";
+      inputDeadline.value = data.deadline || '';
+      inputDeadline.onchange = function() { updateCountdown(rowId); };
+      colDeadline.appendChild(inputDeadline);
+      
+      topGrid.appendChild(colDeadline);
+      div.appendChild(topGrid);
+
+      const subBox = document.createElement("div");
+      subBox.className = "sub-items-box " + (needsSubItems ? "" : "hidden") + " bg-indigo-50/70 rounded-lg border border-indigo-100 p-3 mt-3";
+      
+      if (needsSubItems) {
+        subBox.appendChild(buildSubItemsElement(cat, data.subItems || {}, rowId));
+      }
+      div.appendChild(subBox);
+
+      const bottomRow = document.createElement("div");
+      bottomRow.className = "grid grid-cols-1 md:grid-cols-12 gap-3 items-center pt-3 mt-3 border-t border-slate-200";
+      
+      const colDesc = document.createElement("div");
+      colDesc.className = "md:col-span-11";
+      colDesc.innerHTML = '<label class="block text-xs font-medium text-slate-500 mb-1">補充說明 (選填)</label>' +
+        '<input type="text" class="task-desc w-full border border-slate-200 rounded-lg px-3 py-1.5 text-xs bg-white" placeholder="其他自行填寫內容..." value="' + (data.description || '').replace(/"/g, '&quot;') + '">';
+      bottomRow.appendChild(colDesc);
+
+      const colDel = document.createElement("div");
+      colDel.className = "md:col-span-1 flex justify-end mt-4";
+      const delBtn = document.createElement("button");
+      delBtn.type = "button";
+      delBtn.className = "text-slate-400 hover:text-rose-600 p-2";
+      delBtn.title = "刪除此列";
+      delBtn.innerHTML = '<i class="fa-solid fa-trash-can text-lg"></i>';
+      delBtn.onclick = function() { document.getElementById(rowId).remove(); };
+      colDel.appendChild(delBtn);
+      bottomRow.appendChild(colDel);
+
+      div.appendChild(bottomRow);
+      container.appendChild(div);
+      
+      updateCountdown(rowId);
+      updateMainStatus(rowId);
+      updateUnfinishedCount(rowId);
+    }
+
+    function changeTaskCategory(rowId) {
+      const row = document.getElementById(rowId);
+      const cat = row.querySelector('.task-category').value;
+      const box = row.querySelector('.sub-items-box');
+      
+      if (cat === '1-專案負責規劃,維修工程' || cat === '4-現場工程監工') {
+        box.classList.remove('hidden');
+        box.innerHTML = '';
+        box.appendChild(buildSubItemsElement(cat, {}, rowId));
+      } else {
+        box.classList.add('hidden');
+        box.innerHTML = '';
+      }
+      updateMainStatus(rowId);
+    }
+
+    function updateUnfinishedCount(rowId) {
+      const row = document.getElementById(rowId);
+      if (!row) return;
+      const badge = row.querySelector('.unfilled-badge');
+      if (!badge) return;
+
+      let count = 0;
+      const subStatuses = row.querySelectorAll('.sub-status');
+      for (let i = 0; i < subStatuses.length; i++) {
+        if (subStatuses[i].tagName === 'SELECT' && subStatuses[i].value === '未完成') {
+          count++;
+        }
+      }
+
+      const hybridRows = row.querySelectorAll('.hybrid-row');
+      for (let i = 0; i < hybridRows.length; i++) {
+        const select = hybridRows[i].querySelector('select');
+        const input = hybridRows[i].querySelector('input');
+        if (select.value === 'time' && !input.value.trim()) {
+          count++;
+        }
+      }
+
+      const summary = row.querySelector('summary');
+      if (count > 0) {
+        badge.innerText = '（尚有 ' + count + ' 項未填/未完成）';
+        badge.className = "unfilled-badge text-rose-600 font-bold ml-1";
+        if(summary) summary.className = "text-xs font-bold text-rose-600 flex items-center justify-between cursor-pointer list-none select-none pb-2 border-b border-indigo-200";
+      } else {
+        badge.innerText = '（皆已完成）';
+        badge.className = "unfilled-badge text-emerald-600 font-bold ml-1";
+        if(summary) summary.className = "text-xs font-bold text-slate-800 flex items-center justify-between cursor-pointer list-none select-none pb-2 border-b border-indigo-200";
+      }
+    }
+
+    // 建立細項元素 (完美還原記憶修復：直接宣告 dataset.label，並在 option 上雙重鎖定 setAttribute)
+    function buildSubItemsElement(cat, currentSubData, rowId) {
+      currentSubData = currentSubData || {};
+      const details = document.createElement("details");
+      details.className = "group p-2";
+      details.open = true;
+
+      const summary = document.createElement("summary");
+      summary.className = "text-xs font-bold text-slate-800 flex items-center justify-between cursor-pointer list-none select-none pb-2 border-b border-indigo-200";
+      
+      const titleDiv = document.createElement("div");
+      titleDiv.className = "flex items-center space-x-1 flex-wrap";
+      
+      const iconList = document.createElement("i");
+      iconList.className = "fa-solid fa-list-check";
+      titleDiv.appendChild(iconList);
+
+      const spanText = document.createElement("span");
+      spanText.innerText = (cat === '1-專案負責規劃,維修工程') ? '【各工種細項進度】' : '【第四大項：工程細項進度】';
+      titleDiv.appendChild(spanText);
+      
+      const badgeSpan = document.createElement("span");
+      badgeSpan.className = "unfilled-badge text-rose-600 font-bold ml-1";
+      badgeSpan.innerText = "（計算中...）";
+      titleDiv.appendChild(badgeSpan);
+      summary.appendChild(titleDiv);
+
+      const icon = document.createElement("i");
+      icon.className = "fa-solid fa-chevron-down transition-transform duration-300 group-open:rotate-180 text-rose-500";
+      summary.appendChild(icon);
+      details.appendChild(summary);
+
+      const gridDiv = document.createElement("div");
+      gridDiv.className = (cat === '1-專案負責規劃,維修工程') ? "max-h-60 overflow-y-auto pr-1 grid grid-cols-1 sm:grid-cols-2 gap-2 mt-3 pt-1" : "max-h-72 overflow-y-auto pr-1 grid grid-cols-1 md:grid-cols-2 gap-3 mt-3";
+
+      if (cat === '1-專案負責規劃,維修工程') {
+        for (let i = 0; i < subItemDefinitions.length; i++) {
+          const sub = subItemDefinitions[i];
+          const currentVal = currentSubData[sub.label] || currentSubData[sub.key] || (sub.type === 'hybrid' ? '' : '未完成');
+          const itemDiv = document.createElement("div");
+          itemDiv.className = "bg-white p-2 rounded-lg border border-slate-200 flex items-center justify-between text-xs gap-2 hover:border-indigo-300 transition-colors";
+
+          if (sub.type === 'hybrid') {
+            itemDiv.classList.add('hybrid-row');
+            itemDiv.dataset.key = sub.key;
+            const isNone = (currentVal === '無此項目');
+            const textVal = (isNone || currentVal === '未完成') ? '' : currentVal;
+
+            const spanLabel = document.createElement("span");
+            spanLabel.className = "font-medium text-slate-700 truncate sub-label";
+            spanLabel.title = sub.label;
+            spanLabel.innerText = sub.label;
+            itemDiv.appendChild(spanLabel);
+
+            const rightDiv = document.createElement("div");
+            rightDiv.className = "flex items-center space-x-1 shrink-0";
+
+            const timeInput = document.createElement("input");
+            timeInput.type = "text";
+            timeInput.placeholder = "手填時間...";
+            timeInput.className = "sub-time-input border border-slate-300 rounded px-2 py-1 text-xs bg-white w-28 " + (isNone ? "hidden" : "");
+            timeInput.value = textVal;
+            timeInput.oninput = function() { updateMainStatus(rowId); updateUnfinishedCount(rowId); };
+            rightDiv.appendChild(timeInput);
+
+            const statusSel = document.createElement("select");
+            statusSel.className = "sub-status border border-slate-300 rounded px-1.5 py-1 text-xs font-semibold bg-white text-slate-700";
+            statusSel.dataset.label = sub.label;
+            statusSel.dataset.key = sub.key;
+
+            statusSel.onchange = function() {
+              toggleHybridInput(this);
+              updateMainStatus(rowId);
+              updateUnfinishedCount(rowId);
+            };
+            
+            const optTime = document.createElement("option");
+            optTime.value = "time";
+            optTime.innerText = "填時間";
+            if (!isNone) optTime.selected = true;
+            statusSel.appendChild(optTime);
+
+            const optNone = document.createElement("option");
+            optNone.value = "無此項目";
+            optNone.innerText = "⚪ 無此項目";
+            if (isNone) optNone.selected = true;
+            statusSel.appendChild(optNone);
+
+            statusSel.value = isNone ? "無此項目" : "time";
+
+            rightDiv.appendChild(statusSel);
+            itemDiv.appendChild(rightDiv);
+          } else {
+            const spanLabel = document.createElement("span");
+            spanLabel.className = "font-medium text-slate-700 truncate sub-label";
+            spanLabel.title = sub.label;
+            spanLabel.innerText = sub.label;
+            itemDiv.appendChild(spanLabel);
+
+            const statusSel = document.createElement("select");
+            statusSel.className = "sub-status border border-slate-300 rounded px-1.5 py-1 text-xs font-semibold shrink-0 bg-white";
+            statusSel.dataset.label = sub.label;
+            statusSel.dataset.key = sub.key;
+            
+            statusSel.onchange = function() { updateMainStatus(rowId); updateUnfinishedCount(rowId); };
+
+            const statusOptions = ['未完成', '已完成', '無此項目'];
+            for (let j = 0; j < statusOptions.length; j++) {
+              const val = statusOptions[j];
+              const opt = document.createElement("option");
+              opt.value = val;
+              opt.innerText = (val === '未完成' ? '⏳ 未完成' : (val === '已完成' ? '✅ 已完成' : '⚪ 無此項目'));
+              if (currentVal === val) {
+                opt.selected = true;
+                opt.setAttribute('selected', 'selected');
+              }
+              statusSel.appendChild(opt);
+            }
+            statusSel.value = currentVal;
+
+            itemDiv.appendChild(statusSel);
+          }
+          gridDiv.appendChild(itemDiv);
+        }
+      } else if (cat === '4-現場工程監工') {
+        for (let g = 0; g < projectCategories.length; g++) {
+          const group = projectCategories[g];
+          const subDetails = document.createElement("details");
+          subDetails.className = "group/sub bg-slate-50 border border-slate-200 rounded-lg p-3 col-span-full";
+          subDetails.open = true;
+
+          const subSummary = document.createElement("summary");
+          subSummary.className = "font-bold text-slate-800 text-xs cursor-pointer list-none flex justify-between items-center select-none";
+          subSummary.innerHTML = '<span class="flex items-center space-x-2"><i class="fa-solid fa-folder text-indigo-500"></i><span>' + group.name + '</span></span>' +
+            '<i class="fa-solid fa-angle-down transition-transform duration-200 group-open/sub:rotate-180 text-slate-400"></i>';
+          subDetails.appendChild(subSummary);
+
+          const groupGrid = document.createElement("div");
+          groupGrid.className = "grid grid-cols-1 sm:grid-cols-2 gap-2 mt-3 pt-3 border-t border-slate-200";
+
+          for (let it = 0; it < group.items.length; it++) {
+            const itemName = group.items[it];
+            const subKey = group.name + '-' + itemName;
+            const currentVal = currentSubData[subKey] || currentSubData[itemName] || '未完成';
+            
+            const itemDiv = document.createElement("div");
+            itemDiv.className = "bg-white p-2 rounded-lg border border-slate-200 flex items-center justify-between text-xs gap-2 hover:border-indigo-300 transition-colors";
+            
+            const spanItem = document.createElement("span");
+            spanItem.className = "font-medium text-slate-700 truncate";
+            spanItem.title = itemName;
+            spanItem.innerText = itemName;
+            itemDiv.appendChild(spanItem);
+
+            const statusSel = document.createElement("select");
+            statusSel.className = "sub-status border border-slate-300 rounded px-1.5 py-1 text-xs font-semibold shrink-0 bg-white";
+            statusSel.dataset.group = group.name;
+            statusSel.dataset.item = itemName;
+            statusSel.dataset.label = group.name + '-' + itemName;
+            
+            statusSel.onchange = function() { updateMainStatus(rowId); updateUnfinishedCount(rowId); };
+
+            const statusOptions = ['未完成', '已完成', '無此項目'];
+            for (let j = 0; j < statusOptions.length; j++) {
+              const val = statusOptions[j];
+              const opt = document.createElement("option");
+              opt.value = val;
+              opt.innerText = (val === '未完成' ? '⏳ 未完成' : (val === '已完成' ? '✅ 已完成' : '⚪ 無此項目'));
+              if (currentVal === val) {
+                opt.selected = true;
+                opt.setAttribute('selected', 'selected');
+              }
+              statusSel.appendChild(opt);
+            }
+            statusSel.value = currentVal;
+
+            itemDiv.appendChild(statusSel);
+
+            groupGrid.appendChild(itemDiv);
+          }
+          subDetails.appendChild(groupGrid);
+          gridDiv.appendChild(subDetails);
+        }
+      }
+
+      details.appendChild(gridDiv);
+      return details;
+    }
+
+    function toggleHybridInput(selectEl) {
+      const parent = selectEl.closest('.hybrid-row');
+      const inputEl = parent.querySelector('.sub-time-input');
+      if (selectEl.value === '無此項目') {
+        inputEl.classList.add('hidden');
+        inputEl.value = '';
+      } else {
+        inputEl.classList.remove('hidden');
+        inputEl.focus();
+      }
+    }
+
+    function updateCountdown(rowId) {
+      const row = document.getElementById(rowId);
+      const dateInput = row.querySelector('.task-deadline').value;
+      const textSpan = row.querySelector('.countdown-text');
+      
+      if (!dateInput) { textSpan.innerText = ''; return; }
+      
+      const today = new Date();
+      today.setHours(0,0,0,0);
+      const target = new Date(dateInput);
+      target.setHours(0,0,0,0);
+      const diff = Math.round((target - today) / (1000 * 60 * 60 * 24));
+      
+      if (diff < 0) textSpan.innerText = '已逾期 ' + Math.abs(diff) + ' 天';
+      else if (diff === 0) textSpan.innerText = '今天到期！';
+      else textSpan.innerText = '剩餘 ' + diff + ' 天';
+    }
+
+    function updateMainStatus(rowId) {
+      const row = document.getElementById(rowId);
+      const cat = row.querySelector('.task-category').value;
+      const statusSelect = row.querySelector('.task-status');
+      
+      if (cat === '1-專案負責規劃,維修工程' || cat === '4-現場工程監工') {
+        let hasUnfinished = false;
+        
+        const subStatuses = row.querySelectorAll('.sub-status');
+        for (let i = 0; i < subStatuses.length; i++) {
+          if (subStatuses[i].closest('.hybrid-row')) continue;
+          if (subStatuses[i].tagName === 'SELECT' && subStatuses[i].value === '未完成') {
+            hasUnfinished = true;
+          }
+        }
+
+        const hybridRows = row.querySelectorAll('.hybrid-row');
+        for (let i = 0; i < hybridRows.length; i++) {
+          const select = hybridRows[i].querySelector('select');
+          const input = hybridRows[i].querySelector('input');
+          if (select.value === 'time' && !input.value.trim()) {
+            hasUnfinished = true;
+          }
+        }
+
+        if (!hasUnfinished) {
+          statusSelect.value = "已完成";
+          statusSelect.className = "task-status w-full border border-slate-300 rounded-lg px-2 py-2 text-sm font-semibold bg-white text-emerald-700";
+        } else {
+          statusSelect.value = "進行中(未完成)";
+          statusSelect.className = "task-status w-full border border-slate-300 rounded-lg px-2 py-2 text-sm font-semibold bg-white text-amber-700";
+        }
+        
+        statusSelect.style.pointerEvents = 'none';
+        statusSelect.style.backgroundColor = '#f1f5f9';
+      } else {
+        statusSelect.style.pointerEvents = 'auto';
+        statusSelect.style.backgroundColor = '#fff';
+        statusSelect.className = "task-status w-full border border-slate-300 rounded-lg px-2 py-2 text-sm font-semibold bg-white";
+      }
+    }
+
+    async function fetchLogs() {
+      const nameInput = document.getElementById('employeeName');
+      const name = nameInput ? nameInput.value.trim() : '';
+      if (!GAS_WEB_APP_URL || GAS_WEB_APP_URL.includes("YOUR_GAS_WEB_APP_URL") || !name) return;
+
+      try {
+        const res = await fetch(GAS_WEB_APP_URL + "?t=" + new Date().getTime(), { cache: "no-store" });
+        const result = await res.json();
+        if (result.result === "success" && Array.isArray(result.data)) {
+          allLogs = result.data.filter(function(log) {
+            return (log['員工姓名'] || log['姓名']) === name;
+          }).reverse();
+          
+          const yearsSet = new Set();
+          for (let i = 0; i < allLogs.length; i++) {
+            const l = allLogs[i];
+            if (l['工作日期'] && l['工作日期'].length >= 4) {
+              yearsSet.add(l['工作日期'].substring(0, 4));
+            }
+          }
+          const yearSelect = document.getElementById('filterYear');
+          yearSelect.innerHTML = '<option value="">所有年份</option>';
+          const yearsArr = Array.from(yearsSet).sort().reverse();
+          for (let i = 0; i < yearsArr.length; i++) {
+            yearSelect.innerHTML += '<option value="' + yearsArr[i] + '">' + yearsArr[i] + ' 年</option>';
+          }
+
+          renderHistory();
+          processUnfinishedTasks();
+        }
+      } catch (e) {
+        console.error(e);
+      }
+    }
+
+    function parseLogsToStructured(logs) {
+      const parsed = [];
+      for (let i = 0; i < logs.length; i++) {
+        const log = logs[i];
+        const summary = log['今日主要進度'] || '';
+        const lines = summary.split('\n');
+        const tasks = [];
+        
+        for (let j = 0; j < lines.length; j++) {
+          const line = lines[j];
+          if (line.includes('• [')) {
+            const pMatch = line.match(/• \[(.*?)\]/);
+            const project = pMatch ? pMatch[1] : '';
+            const cMatch = line.match(/\] (.*?) \(/);
+            const category = cMatch ? cMatch[1].trim() : '任務';
+            
+            const dMatch = line.match(/期限:(.*?)[,\)]/);
+            const deadline = dMatch ? dMatch[1].trim() : '';
+            
+            let mainStatus = '';
+            if (line.includes('狀態:')) {
+              const afterStatus = line.split('狀態:')[1];
+              if (afterStatus.startsWith('進行中(未完成)')) {
+                mainStatus = '進行中(未完成)';
+              } else if (afterStatus.startsWith('已完成')) {
+                mainStatus = '已完成';
+              } else {
+                const match = afterStatus.match(/^(.*?)\)/);
+                mainStatus = match ? match[1].trim() : '';
+              }
+            }
+            
+            let description = '無';
+            if (line.includes('- 備註:')) {
+              description = line.split('- 備註:')[1].trim();
+            }
+
+            const subList = [];
+            if (line.includes('【細項】')) {
+              const subStr = line.split('【細項】')[1].split(' - 備註:')[0];
+              const parts = subStr.split('; ');
+              for (let k = 0; k < parts.length; k++) {
+                const p = parts[k];
+                const index = p.indexOf(':');
+                if (index > -1) {
+                  const label = p.substring(0, index).trim();
+                  const status = p.substring(index + 1).trim();
+                  if (label && status) {
+                    subList.push({ label: label, status: status });
+                  }
+                }
+              }
+            }
+            tasks.push({ project: project, category: category, deadline: deadline, mainStatus: mainStatus, subList: subList, description: description });
+          }
+        }
+        parsed.push({ date: log['工作日期'], timestamp: log['提交時間'], tasks: tasks });
+      }
+      return parsed;
+    }
+
+    function processUnfinishedTasks() {
+      const parsed = parseLogsToStructured(allLogs);
+      const latestMap = new Map();
+
+      for (let i = 0; i < parsed.length; i++) {
+        const item = parsed[i];
+        for (let j = 0; j < item.tasks.length; j++) {
+          const t = item.tasks[j];
+          const key = t.project + '_' + t.category;
+          if (!latestMap.has(key)) {
+            latestMap.set(key, t);
+          }
+        }
+      }
+
+      const autoAddItems = [];
+
+      latestMap.forEach(function(t) {
+        let subItemsObj = {};
+        if (t.category === '1-專案負責規劃,維修工程' || t.category === '4-現場工程監工') {
+          for (let s = 0; s < t.subList.length; s++) {
+            const sub = t.subList[s];
+            subItemsObj[sub.label] = sub.status;
+          }
+        }
+
+        if (t.mainStatus !== '已完成') {
+          autoAddItems.push({
+            project: t.project,
+            category: t.category,
+            status: t.mainStatus || '進行中(未完成)',
+            deadline: t.deadline || '',
+            description: (t.description && t.description !== '無') ? t.description : '',
+            subItems: subItemsObj,
+            isAutoLoaded: true
+          });
+        }
+      });
+
+      const container = document.getElementById("taskContainer");
+      const box = document.getElementById('alertBox');
+      const count = document.getElementById('alertCount');
+
+      if (autoAddItems.length > 0) {
+        container.innerHTML = "";
+        for (let i = 0; i < autoAddItems.length; i++) {
+          addTaskRow(autoAddItems[i]);
+        }
+        box.classList.remove('hidden');
+        count.innerText = autoAddItems.length;
+      } else {
+        box.classList.add('hidden');
+        container.innerHTML = "";
+        addTaskRow();
+      }
+    }
+
+    function renderHistory() {
+      const year = document.getElementById('filterYear').value;
+      const month = document.getElementById('filterMonth').value;
+      const container = document.getElementById('historyContainer');
+      const nameInput = document.getElementById('employeeName');
+      const name = nameInput ? (nameInput.value.trim() || '同仁') : '同仁';
+
+      document.getElementById('historyTitle').innerText = '📜 ' + name + ' 的歷史工作日誌總覽';
+
+      const parsed = parseLogsToStructured(allLogs);
+      const filtered = [];
+      for (let i = 0; i < parsed.length; i++) {
+        const item = parsed[i];
+        if (!item.date) continue;
+        const parts = item.date.split('-');
+        const matchYear = (!year || parts[0] === year);
+        const matchMonth = (!month || parts[1] === month);
+        if (matchYear && matchMonth) {
+          filtered.push(item);
+        }
+      }
+
+      if (filtered.length === 0) {
+        container.innerHTML = '<div class="text-center py-8 text-xs text-slate-400">找不到符合條件的歷史紀錄</div>';
+        return;
+      }
+
+      container.innerHTML = '';
+      for (let i = 0; i < filtered.length; i++) {
+        const item = filtered[i];
+        let tasksHtml = '';
+        
+        for (let j = 0; j < item.tasks.length; j++) {
+          const t = item.tasks[j];
+          let subStrArr = [];
+          for (let s = 0; s < t.subList.length; s++) {
+            subStrArr.push(t.subList[s].label + '(' + t.subList[s].status + ')');
+          }
+          const subStr = subStrArr.join(', ');
+          const statusBadge = (t.mainStatus === '已完成') ? '<span class="bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded text-[10px] font-bold">✅ 已完成</span>' : '<span class="bg-amber-100 text-amber-800 px-2 py-0.5 rounded text-[10px] font-bold">⏳ 未完成</span>';
+          
+          tasksHtml += '<div class="bg-white p-3 rounded-lg border border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">' +
+            '<div>' +
+              '<span class="font-bold text-slate-800">[' + (t.project || '無專案') + '] ' + t.category + '</span> ' +
+              statusBadge +
+              (subStr ? '<p class="text-indigo-600 font-medium text-[11px] mt-1">細項狀態：' + subStr + '</p>' : '') +
+              ((t.description && t.description !== '無') ? '<p class="text-slate-500 text-[11px] mt-0.5">備註：' + t.description + '</p>' : '') +
+            '</div>' +
+            (t.deadline ? '<div class="text-rose-600 font-medium shrink-0"><i class="fa-regular fa-clock mr-1"></i>期限：' + t.deadline + '</div>' : '') +
+          '</div>';
+        }
+
+        container.innerHTML += '<div class="border border-slate-200 bg-slate-50/50 p-4 rounded-xl text-sm space-y-3">' +
+          '<div class="flex justify-between items-center text-xs border-b pb-2 border-slate-200">' +
+            '<span class="font-bold text-blue-600">📅 工作日期：' + item.date + '</span>' +
+            '<span class="text-slate-400">提交時間：' + item.timestamp + '</span>' +
+          '</div>' +
+          '<div class="space-y-2">' + tasksHtml + '</div>' +
+        '</div>';
+      }
+    }
+
+    async function submitLog() {
+      const nameInput = document.getElementById('employeeName');
+      const name = nameInput ? nameInput.value.trim() : '';
+      if (!name) { alert('請先填寫您的姓名！'); return; }
+
+      const taskRows = document.querySelectorAll('.task-row');
+      let tasksTextArr = [];
+      let isDeadlineValid = true;
+      let isProjectValid = true;
+
+      for (let i = 0; i < taskRows.length; i++) {
+        const row = taskRows[i];
+        const projectInput = row.querySelector('.task-project');
+        const project = projectInput ? projectInput.value.trim() : '';
+        const categorySel = row.querySelector('.task-category');
+        const category = categorySel ? categorySel.value : '';
+        const statusSel = row.querySelector('.task-status');
+        const status = statusSel ? statusSel.value : '';
+        const deadlineInput = row.querySelector('.task-deadline');
+        const deadline = deadlineInput ? deadlineInput.value : '';
+        const descInput = row.querySelector('.task-desc');
+        const desc = descInput ? descInput.value.trim() : '';
+
+        if (!project) isProjectValid = false;
+        if (!deadline) isDeadlineValid = false;
+
+        let subText = '';
+        if (category === '1-專案負責規劃,維修工程' || category === '4-現場工程監工') {
+          let activeSubs = [];
+          
+          const subStatuses = row.querySelectorAll('.sub-status');
+          for (let s = 0; s < subStatuses.length; s++) {
+            const sel = subStatuses[s];
+            if (sel.closest('.hybrid-row')) continue;
+            if (sel.tagName === 'SELECT') {
+              if (category === '1-專案負責規劃,維修工程') {
+                const label = sel.dataset.label || '';
+                if (label) activeSubs.push(label + ':' + sel.value);
+              } else {
+                const grp = sel.dataset.group || '';
+                const itm = sel.dataset.item || '';
+                const label = sel.dataset.label || (grp && itm ? grp + '-' + itm : '');
+                if (label) activeSubs.push(label + ':' + sel.value);
+              }
+            }
+          }
+
+          const hybridRows = row.querySelectorAll('.hybrid-row');
+          for (let h = 0; h < hybridRows.length; h++) {
+            const div = hybridRows[h];
+            const selectEl = div.querySelector('select');
+            const selectVal = selectEl ? selectEl.value : '';
+            const timeInput = div.querySelector('input');
+            const inputVal = timeInput ? timeInput.value.trim() : '';
+            const label = (selectEl && selectEl.dataset.label) ? selectEl.dataset.label : '';
+
+            if (selectVal === '無此項目') {
+              if (label) activeSubs.push(label + ':無此項目');
+            } else if (inputVal !== '') {
+              const safeVal = inputVal.replace(/;/g, '；');
+              if (label) activeSubs.push(label + ':' + safeVal);
+            }
+          }
+
+          if (activeSubs.length > 0) {
+            subText = ' 【細項】' + activeSubs.join('; ');
+          }
+        }
+
+        const taskString = '• [' + (project || '無專案') + '] ' + category + ' (期限:' + (deadline || '無') + ', 狀態:' + status + ')' + subText + ' - 備註: ' + (desc || '無');
+        tasksTextArr.push(taskString);
+      }
+
+      if (!isProjectValid) {
+        alert("⚠️ 提交失敗：請務必為所有任務填寫「專案名稱」！");
+        return;
+      }
+      if (!isDeadlineValid) {
+        alert("⚠️ 提交失敗：請務必為所有任務填寫「完成期限」！");
+        return;
+      }
+
+      const blockersEl = document.getElementById('blockersInput');
+      const tomorrowEl = document.getElementById('tomorrowInput');
+      const logDateEl = document.getElementById('logDate');
+
+      const payload = {
+        authorName: name,
+        date: logDateEl ? logDateEl.value : '',
+        summary: tasksTextArr.join('\n'),
+        issues: blockersEl ? (blockersEl.value.trim() || '無') : '無',
+        tomorrowPlan: tomorrowEl ? (tomorrowEl.value.trim() || '無') : '無',
+        status: '待審核'
+      };
+
+      const btn = document.getElementById('submitBtn');
+      if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fa-solid fa-spinner animate-spin"></i><span>正在上傳...</span>';
+      }
+
+      try {
+        const res = await fetch(GAS_WEB_APP_URL, {
+          method: "POST",
+          headers: { "Content-Type": "text/plain;charset=utf-8" },
+          body: JSON.stringify(payload)
+        });
+        const result = await res.json();
+        if (result.result === "success") {
+          alert('🎉 工作日誌已成功提交至雲端！');
+          const container = document.getElementById('taskContainer');
+          if (container) container.innerHTML = "";
+          if (blockersEl) blockersEl.value = "無";
+          if (tomorrowEl) tomorrowEl.value = "";
+          if (logDateEl) logDateEl.valueAsDate = new Date();
+          fetchLogs();
+        } else {
+          alert('上傳失敗：' + (result.message || '未知錯誤'));
+        }
+      } catch (e) {
+        alert('網路連線失敗，請檢查 GAS 網址！');
+      } finally {
+        if (btn) {
+          btn.disabled = false;
+          btn.innerHTML = '<i class="fa-solid fa-paper-plane"></i><span>提交日誌至雲端</span>';
+        }
+      }
+    }
+  </script>
+</body>
+</html>
